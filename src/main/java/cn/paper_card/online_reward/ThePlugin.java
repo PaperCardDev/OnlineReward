@@ -107,18 +107,21 @@ public final class ThePlugin extends JavaPlugin implements Listener {
 
             // 结算
 
+            final long ONE_HOUR = 60 * 60 * 1000L;
+
             final OnlineTimeAndJoinCount onlineInfo;
 
             try {
-                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime);
+//                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime);
+                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime - 24 * ONE_HOUR);
             } catch (Exception e) {
                 this.getSLF4JLogger().error("", e);
                 this.sendException(player, e);
                 return;
             }
 
-            // 每半小时一个硬币
-            final long ONE_HOUR = 60 * 60 * 1000L;
+            // 每1小时2个硬币
+
 
             // 记录
             final long hours = onlineInfo.onlineTime() / ONE_HOUR;
