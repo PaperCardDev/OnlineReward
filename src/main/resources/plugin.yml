@@ -4,3 +4,8 @@ main: cn.paper_card.online_reward.ThePlugin
 api-version: '1.20'
 folia-supported: true
 author: Paper99
+
+depend:
+  - Database
+  - PlayerOnlineTime
+  - PlayerCoins

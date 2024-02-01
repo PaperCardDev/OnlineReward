@@ -107,29 +107,35 @@ public final class ThePlugin extends JavaPlugin implements Listener {
 
             // 结算
 
-            final long ONE_HOUR = 60 * 60 * 1000L;
-
             final OnlineTimeAndJoinCount onlineInfo;
 
             try {
 //                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime);
-                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime - 24 * ONE_HOUR);
+                onlineInfo = api.queryOneDay(player.getUniqueId(), todayBeginTime - TimeUnit.Day.getMs());
             } catch (Exception e) {
                 this.getSLF4JLogger().error("", e);
                 this.sendException(player, e);
                 return;
             }
 
-            // 每1小时2个硬币
+            // 每15分钟1枚硬币
+            long coins = onlineInfo.onlineTime() / (TimeUnit.Minute.getMs() * 15L);
+            // 最多12枚硬币
+            coins = Math.min(coins, 12);
 
+            final String onlineStr = Util.toReadableTime(onlineInfo.onlineTime());
 
-            // 记录
-            final long hours = onlineInfo.onlineTime() / ONE_HOUR;
+            this.getSLF4JLogger().info("玩家%s昨日在线%s，将得到%d枚硬币".formatted(player.getName(), onlineStr, coins));
 
-            // 换算为硬币
-            final long coins = Math.min(hours * 2, 10);
+            final String rule = "每在线15分钟获得1枚硬币，最多12枚硬币";
 
-            this.getSLF4JLogger().info("玩家%s昨日在线%d小时，将得到%d枚硬币".formatted(player.getName(), hours, coins));
+            final String remark = "玩家%s昨日（%s）在线%s获得%d枚硬币（%s）".formatted(
+                    player.getName(),
+                    new SimpleDateFormat("MM月dd日").format(todayBeginTime - TimeUnit.Day.getMs()),
+                    onlineStr,
+                    coins,
+                    rule
+            );
 
             // 记录数据，表示已经结算过了
             try {
@@ -138,12 +144,7 @@ public final class ThePlugin extends JavaPlugin implements Listener {
                         cur,
                         todayBeginTime,
                         coins,
-                        "玩家%s昨日（%s）在线%d小时获得%d枚硬币".formatted(
-                                player.getName(),
-                                new SimpleDateFormat("MM月dd日").format(todayBeginTime - TimeUnit.Day.getMs()),
-                                hours,
-                                coins
-                        )
+                        remark
                 ));
             } catch (SQLException e) {
                 this.getSLF4JLogger().error("", e);
@@ -152,22 +153,12 @@ public final class ThePlugin extends JavaPlugin implements Listener {
             }
 
             // 增加硬币
+            final long leftCoins;
             try {
-                api1.addCoins(player.getUniqueId(), coins);
+                leftCoins = api1.addCoins(player.getUniqueId(), coins, remark);
             } catch (Exception e) {
                 this.getSLF4JLogger().error("", e);
                 this.sendException(player, new Exception("尝试为你增加%d枚硬币时异常".formatted(coins), e));
-                return;
-            }
-
-            // 查询硬币
-            final long leftCoins;
-
-            try {
-                leftCoins = api1.queryCoins(player.getUniqueId());
-            } catch (Exception e) {
-                this.getSLF4JLogger().error("", e);
-                this.sendException(player, new Exception("已经结算给你%d枚硬币，但是无法查询剩余硬币".formatted(coins), e));
                 return;
             }
 
@@ -176,7 +167,7 @@ public final class ThePlugin extends JavaPlugin implements Listener {
             this.appendPrefix(text);
             text.appendSpace();
             text.append(Component.text("昨日你累计在线"));
-            text.append(Component.text(Util.toReadableTime(onlineInfo.onlineTime())).color(NamedTextColor.AQUA));
+            text.append(Component.text(onlineStr).color(NamedTextColor.AQUA));
 
             text.appendNewline();
             text.append(Component.text("已赠送给你"));
@@ -187,7 +178,7 @@ public final class ThePlugin extends JavaPlugin implements Listener {
             text.appendSpace();
             text.append(Component.text("[???]")
                     .color(NamedTextColor.GRAY).decorate(TextDecoration.UNDERLINED)
-                    .hoverEvent(HoverEvent.showText(Component.text("每在线1小时赠送2枚硬币，不足1小时按0小时计算，最多10枚硬币")))
+                    .hoverEvent(HoverEvent.showText(Component.text(rule)))
             );
 
             player.sendMessage(text.build().color(NamedTextColor.GREEN));
